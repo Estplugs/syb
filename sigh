@@ -1,0 +1,21 @@
+-- Global Configuration
+getgenv().Host = 5576557338 -- Replace with the User ID of the controller
+getgenv().FPS = 5 -- Initial FPS cap for performance
+getgenv().Alts = {
+    Alt1 = 6122231051,
+    Alt2 = 6122140325,
+    Alt3 = 6121711425,
+    Alt4 = 6121896703,
+    Alt5 = 6121741983,
+    Alt6 = 6121761565,
+    Alt7 = 6122159814,
+    Alt8 = 6122037368,
+    Alt9 = 6121895656,
+    Alt10 = 6121765247,
+    Alt11 = 6121745318,
+    Alt12 = 6121709709,
+    Alt13 = 5189052126,
+    Alt14 = 5188877609,
+    Alt15 = 6020543286,
+    Alt16 = 6122164508
+}
