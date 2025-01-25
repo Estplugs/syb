@@ -1,21 +1,141 @@
--- Global Configuration
-getgenv().Host = 5576557338 -- Replace with the User ID of the controller
-getgenv().FPS = 5 -- Initial FPS cap for performance
-getgenv().Alts = {
-    Alt1 = 6122231051,
-    Alt2 = 6122140325,
-    Alt3 = 6121711425,
-    Alt4 = 6121896703,
-    Alt5 = 6121741983,
-    Alt6 = 6121761565,
-    Alt7 = 6122159814,
-    Alt8 = 6122037368,
-    Alt9 = 6121895656,
-    Alt10 = 6121765247,
-    Alt11 = 6121745318,
-    Alt12 = 6121709709,
-    Alt13 = 5189052126,
-    Alt14 = 5188877609,
-    Alt15 = 6020543286,
-    Alt16 = 6122164508
+-- Wait for the game to fully load
+task.spawn(function()
+    repeat
+        task.wait()
+    until game:IsLoaded()
+end)
+
+-- Ensure Players service is ready
+while not game:GetService("Players") or not game.Players.LocalPlayer do
+    task.wait()
+end
+
+-- Prevent FPS cap adjustment for the host
+if game.Players.LocalPlayer.UserId ~= getgenv().Host then
+    setfpscap(getgenv().FPS)
+end
+
+local player = game.Players.LocalPlayer
+
+-- Wait for the player's character to load
+local character = player.Character or player.CharacterAdded:Wait()
+while not character:FindFirstChild("HumanoidRootPart") do
+    task.wait()
+end
+local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+
+-- Positions for alts to move to
+local positions = {
+    Vector3.new(-360.60, 21.25, -319.37),
+    Vector3.new(-368.80, 21.25, -319.21),
+    Vector3.new(-377.87, 21.25, -319.06),
+    Vector3.new(-385.35, 21.25, -319.04),
+    Vector3.new(-385.32, 21.25, -309.64),
+    Vector3.new(-377.37, 21.25, -309.66),
+    Vector3.new(-370.56, 21.25, -309.69),
+    Vector3.new(-363.30, 21.25, -309.98),
+    Vector3.new(-363.49, 21.25, -301.12),
+    Vector3.new(-370.69, 21.25, -301.19),
+    Vector3.new(-377.69, 21.25, -301.06),
+    Vector3.new(-385.09, 21.25, -300.94),
+    Vector3.new(-384.90, 21.25, -290.01),
+    Vector3.new(-377.50, 21.25, -290.13),
+    Vector3.new(-370.77, 21.25, -290.25),
+    Vector3.new(-363.77, 21.25, -290.37)
 }
+
+-- Function to assign positions to alts
+local function assignAltPositions()
+    local index = 1
+    for _, userId in pairs(getgenv().Alts) do
+        if index <= #positions then
+            local targetPosition = positions[index]
+            local altPlayer = game.Players:GetPlayerByUserId(userId)
+            if altPlayer then
+                local altCharacter = altPlayer.Character or altPlayer.CharacterAdded:Wait()
+                while not altCharacter:FindFirstChild("HumanoidRootPart") do
+                    task.wait()
+                end
+                local altHumanoidRootPart = altCharacter:FindFirstChild("HumanoidRootPart")
+                if altHumanoidRootPart then
+                    altHumanoidRootPart.CFrame = CFrame.new(targetPosition)
+                    index += 1
+                else
+                    warn("HumanoidRootPart not found for alt: UserID", userId)
+                end
+            else
+                warn("Alt not in game or unavailable: UserID", userId)
+            end
+        else
+            warn("No available position for alt: UserID", userId)
+        end
+    end
+end
+
+-- Disable 3D rendering for non-host accounts
+if player.UserId ~= getgenv().Host then
+    game:GetService("RunService"):Set3dRenderingEnabled(false)
+end
+
+-- Auto drop cash control variables
+local autoDroppingCash = false
+local function startDroppingCash()
+    if player.UserId == getgenv().Host then return end
+    autoDroppingCash = true
+    task.spawn(function()
+        while autoDroppingCash do
+            local MainEvent = game:GetService("ReplicatedStorage"):FindFirstChild("MainEvent")
+            if MainEvent then
+                MainEvent:FireServer("DropMoney", "15000")
+            else
+                warn("MainEvent not found!")
+            end
+            task.wait(15)
+        end
+    end)
+end
+
+local function stopDroppingCash()
+    autoDroppingCash = false
+end
+
+-- Listen for chat commands
+local function onChatMessage(playerWhoChatted, message)
+    if playerWhoChatted.UserId == getgenv().Host then
+        local args = message:lower():split(" ")
+        local command = args[1]
+
+        -- Ensure the command starts with the configured prefix
+        if command:sub(1, #getgenv().Prefix) == getgenv().Prefix then
+            command = command:sub(#getgenv().Prefix + 1)
+
+            if command == "setup" then
+                assignAltPositions()
+            elseif command == "setfps" and args[2] then
+                local fpsValue = tonumber(args[2])
+                if fpsValue and player.UserId ~= getgenv().Host then
+                    getgenv().FPS = fpsValue
+                    setfpscap(fpsValue)
+                end
+            elseif command == "drop" then
+                startDroppingCash()
+            elseif command == "stop" then
+                stopDroppingCash()
+            end
+        end
+    end
+end
+
+-- Connect chat listener
+game.Players.PlayerAdded:Connect(function(addedPlayer)
+    addedPlayer.Chatted:Connect(function(message)
+        onChatMessage(addedPlayer, message)
+    end)
+end)
+
+-- Bind existing players
+for _, existingPlayer in ipairs(game.Players:GetPlayers()) do
+    existingPlayer.Chatted:Connect(function(message)
+        onChatMessage(existingPlayer, message)
+    end)
+end
